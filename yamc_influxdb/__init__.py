@@ -3,4 +3,16 @@
 
 from .influxdb import InfluxDBWriter
 
-__version__ = "1.0.0"
+from importlib.metadata import version, PackageNotFoundError
+
+
+def __getattr__(name):
+    """
+    Return the version number of the package as a lazy attribute.
+    """
+    if name == "__version__":
+        try:
+            return version("yamc-influxdb")
+        except PackageNotFoundError as e:
+            return "unknown"
+    raise AttributeError(f"module {__name__} has no attribute {name}")

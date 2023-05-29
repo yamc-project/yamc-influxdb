@@ -20,25 +20,17 @@ def read(*parts):
         return fobj.read()
 
 
-# finds the version of the package
-def find_version(*file_paths):
-    version_file = read(*file_paths)
-    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_file, re.M)
-    if version_match:
-        return version_match.group(1)
-    raise RuntimeError("Unable to find version string.")
-
-
 # setup main
 # required modules
 install_requires = [
     "yamc_server>=1.1.0",
     "influxdb>=5.3.1",
+    "setuptools_scm>=6.0.1",
 ]
 
 setup(
     name="yamc-influxdb",
-    version=find_version("yamc_influxdb", "__init__.py"),
+    use_scm_version={"root": ".", "relative_to": __file__, "local_scheme": "node-and-timestamp"},
     description="yamc writer for influxdb",
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
