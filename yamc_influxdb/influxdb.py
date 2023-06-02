@@ -5,6 +5,7 @@ import time
 import logging
 
 from influxdb import InfluxDBClient
+from influxdb.exceptions import InfluxDBServerError
 from yamc.writers import Writer, HealthCheckException
 
 from yamc.utils import Map, is_number
@@ -16,7 +17,7 @@ class InfluxDBWriter(Writer):
         self.host = self.config.value_str("host", regex="[a-zA-Z0-9\_\-\.]+")
         self.port = self.config.value_int("port", min=1, max=65535)
         self.user = self.config.value_str("user", default="")
-        self.pswd = self.config.value_str("user", default="")
+        self.pswd = self.config.value_str("password", default="")
         self.dbname = self.config.value_str("dbname")
         self.log.info(
             "Creating client connection, host=%s, port=%s, user=%s, password=(secret), dbname=%s"
@@ -53,7 +54,7 @@ class InfluxDBWriter(Writer):
         for data in items:
             fields, tags = self._create_fields_tags(data.data)
             point = Map(
-                measurement=data.get("measurement", data.collector_id),
+                measurement=data.data.get("measurement", data.collector_id),
                 time=int(data.data.get("time", 0)) * 1000000000,
                 fields=fields,
                 tags=tags,
@@ -69,5 +70,7 @@ class InfluxDBWriter(Writer):
 
         try:
             self.client.write_points(points)
-        except Exception as e:
+        except InfluxDBServerError as e:
             raise HealthCheckException("Writing the points to influxdb failed!", e)
+        except Exception as e:
+            raise e
