@@ -26,6 +26,7 @@ class InfluxDBWriter(Writer):
         self.client = InfluxDBClient(self.host, self.port, self.user, self.pswd, self.dbname)
 
     def healthcheck(self):
+        super().healthcheck()
         self.client.ping()
 
     def _create_fields_tags(self, data):
