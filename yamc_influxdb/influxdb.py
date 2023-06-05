@@ -51,27 +51,27 @@ class InfluxDBWriter(Writer):
         return fields, tags
 
     def do_write(self, items):
-        points = []
-        for data in items:
-            fields, tags = self._create_fields_tags(data.data)
-            point = Map(
-                measurement=data.data.get("measurement", data.collector_id),
-                time=int(data.data.get("time", 0)) * 1000000000,
-                fields=fields,
-                tags=tags,
-            )
-            if point.time == 0:
-                self.log.error(
-                    "Cannot write the data point %s to the influxdb due to a missing time field!" % str(point)
-                )
-                continue
-            if len(point.fields.keys()) == 0:
-                self.log.warn("There are no fields in the data point %s!" % str(point))
-            points.append(point)
-
         try:
+            points = []
+            for item in items:
+                fields, tags = self._create_fields_tags(item.data)
+                point = Map(
+                    measurement=item.data.get("measurement", item.collector_id),
+                    time=int(item.data.get("time", 0)) * 1000000000,
+                    fields=fields,
+                    tags=tags,
+                )
+                if point.time == 0:
+                    self.log.error(
+                        "Cannot write the data point %s to the influxdb due to a missing time field!" % str(point)
+                    )
+                    continue
+                if len(point.fields.keys()) == 0:
+                    self.log.warn("There are no fields in the data point %s!" % str(point))
+                points.append(point)
+
             self.client.write_points(points)
         except InfluxDBServerError as e:
             raise HealthCheckException("Writing the points to influxdb failed!", e)
         except Exception as e:
-            raise e
+            raise Exception(f"Writing the points to influxdb failed! (collector={item.collector_id})", e)
