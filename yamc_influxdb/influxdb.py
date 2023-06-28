@@ -43,13 +43,6 @@ class InfluxDBWriter(Writer):
             tags[tag] = _value(value)
         for field, value in data.get("fields", {}).items():
             fields[field] = _value(value)
-        if len(fields.keys()) == 0 and len(tags.keys()) == 0:
-            for k, v in data.data.items():
-                if k != "time":
-                    if is_number(v):
-                        fields[k] = v
-                    else:
-                        tags[k] = v
         return fields, tags
 
     def do_write(self, items):
