@@ -3,6 +3,7 @@
 
 import time
 import logging
+import json
 
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBServerError
@@ -19,6 +20,7 @@ class InfluxDBWriter(Writer):
         self.user = self.config.value_str("user", default="")
         self.pswd = self.config.value_str("password", default="")
         self.dbname = self.config.value_str("dbname")
+        self.max_body_size = self.config.value_str("max-body-size", default=20000000)
         self.log.info(
             "Creating client connection, host=%s, port=%s, user=%s, password=(secret), dbname=%s"
             % (self.host, self.port, self.user, self.dbname)
@@ -53,6 +55,7 @@ class InfluxDBWriter(Writer):
     def do_write(self, items):
         try:
             points = []
+            size = 0
             for item in items:
                 fields, tags = self._create_fields_tags(item.data)
                 point = Map(
@@ -69,9 +72,16 @@ class InfluxDBWriter(Writer):
                 if len(point.fields.keys()) == 0:
                     self.log.warn("There are no fields in the data point %s!" % str(point))
                 points.append(point)
+                size += json.dumps(point).__sizeof__()
+                if size > self.max_body_size:
+                    self.log.debug(f"Writing the points as the size exceeded {self.max_body_size} bytes.")
+                    self.client.write_points(points)
+                    points = []
+                    size = 0
 
-            self.client.write_points(points)
+            if len(points) > 0:
+                self.client.write_points(points)
         except InfluxDBServerError as e:
-            raise HealthCheckException("Writing the points to influxdb failed!", e)
+            raise HealthCheckException("Writing of the points to influxdb failed!", e)
         except Exception as e:
             raise Exception(f"Writing the points to influxdb failed! (collector={item.collector_id})", e)
