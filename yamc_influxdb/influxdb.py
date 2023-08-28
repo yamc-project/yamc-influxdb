@@ -21,15 +21,25 @@ class InfluxDBWriter(Writer):
         self.pswd = self.config.value_str("password", default="")
         self.dbname = self.config.value_str("dbname")
         self.max_body_size = self.config.value_str("max-body-size", default=20000000)
-        self.log.info(
-            "Creating client connection, host=%s, port=%s, user=%s, password=(secret), dbname=%s"
-            % (self.host, self.port, self.user, self.dbname)
-        )
-        self.client = InfluxDBClient(self.host, self.port, self.user, self.pswd, self.dbname)
+        self._client = None
+
+    @property
+    def client(self):
+        if self._client is None:
+            self.log.info(
+                "Creating client connection, host=%s, port=%s, user=%s, password=(secret), dbname=%s"
+                % (self.host, self.port, self.user, self.dbname)
+            )
+            self._client = InfluxDBClient(self.host, self.port, self.user, self.pswd, self.dbname)
+        return self._client
 
     def healthcheck(self):
-        super().healthcheck()
-        self.client.ping()
+        try:
+            super().healthcheck()
+            self.client.ping()
+        except Exception as e:
+            self._client = None
+            raise e
 
     def _create_fields_tags(self, data):
         def _value(v):
