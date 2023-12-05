@@ -42,7 +42,6 @@ class InfluxDBWriter(Writer):
         self.pswd = self.config.value_str("password", default="")
         self.dbname = self.config.value_str("dbname")
         self.tp_label = self.config.value_str("time_precision", default="ms", regex="^(s|ms|us|ns)$")
-        print(self.tp_label)
         self.tp = _time_precision_item(self.tp_label)
         self.max_body_size = self.config.value_str("max-body-size", default=20000000)
         self._client = None
@@ -105,7 +104,7 @@ class InfluxDBWriter(Writer):
                 if len(point.fields.keys()) == 0:
                     self.log.warn("There are no fields in the data point %s!" % str(point))
                 points.append(point)
-                self.log.debug("Adding the data point %s to the influxdb." % str(point))
+                # self.log.debug("Adding the data point %s to the influxdb." % str(point))
                 size += json.dumps(point).__sizeof__()
                 if size > self.max_body_size:
                     self.log.debug(f"Writing the points as the size exceeded {self.max_body_size} bytes.")
