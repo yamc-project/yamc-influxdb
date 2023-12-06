@@ -44,6 +44,7 @@ class InfluxDBWriter(Writer):
         self.tp_label = self.config.value_str("time_precision", default="ms", regex="^(s|ms|us|ns)$")
         self.tp = _time_precision_item(self.tp_label)
         self.max_body_size = self.config.value_str("max-body-size", default=20000000)
+        self.write_one_by_one = self.config.value_bool("write_one_by_one", default=False)
         self._client = None
 
     @property
@@ -106,14 +107,17 @@ class InfluxDBWriter(Writer):
                 points.append(point)
                 # self.log.debug("Adding the data point %s to the influxdb." % str(point))
                 size += json.dumps(point).__sizeof__()
-                if size > self.max_body_size:
-                    self.log.debug(f"Writing the points as the size exceeded {self.max_body_size} bytes.")
-                    self.client.write_points(points)
+                if size > self.max_body_size or self.write_one_by_one:
+                    if not self.write_one_by_one:
+                        self.log.debug(f"Writing the points as the size exceeded {self.max_body_size} bytes.")
+                    else:
+                        self.log.debug("Writing the points one by one.")
+                    self.client.write_points(points, time_precision=self.tp_label)
                     points = []
                     size = 0
 
             if len(points) > 0:
-                self.client.write_points(points)
+                self.client.write_points(points, time_precision=self.tp_label)
         except InfluxDBServerError as e:
             raise HealthCheckException("Writing of the points to influxdb failed!", e)
         except Exception as e:
